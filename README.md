@@ -1,10 +1,11 @@
 # hi, this is freewrite
 
-[!img](https://i.imgur.com/2ucbtff.gif)
+![img](https://i.imgur.com/2ucbtff.gif)
 
-download latest version [here])(http://freewrite.io/).
+download latest version [here](http://freewrite.io/).
 
-if you wanna make a pr go for it.
+if you wanna make an addition + pr,
+or just wanna remix the app for yourself go for it.
 
 - clone repo.
 - open in xcode.
