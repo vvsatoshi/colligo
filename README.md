@@ -2,9 +2,9 @@
 
 a simple, open-source mac app to [freewrite](https://writingprocess.mit.edu/process/step-1-generate-ideas/instructions/freewriting/).
 
-![img](https://i.imgur.com/2ucbtff.gif)
-
 download latest version [here](http://freewrite.io/).
+
+![img](https://i.imgur.com/2ucbtff.gif)
 
 if you wanna make an addition + pr,
 or just wanna remix the app for yourself go for it.
