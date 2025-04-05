@@ -4,7 +4,7 @@ a simple, open-source mac app to [freewrite](https://writingprocess.mit.edu/proc
 
 download latest version (here) coming soon!
 
-![img](https://i.imgur.com/2ucbtff.gif)
+![img](https://i.imgur.com/2ucbtff.gif!)
 
 if you wanna make an addition + pr,
 or just wanna remix the app for yourself go for it.
