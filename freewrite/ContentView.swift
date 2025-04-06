@@ -86,14 +86,14 @@ struct ContentView: View {
     let standardFonts = ["Lato-Regular", "Arial", ".AppleSystemUIFont", "Times New Roman"]
     let fontSizes: [CGFloat] = [16, 18, 20, 22, 24, 26]
     let placeholderOptions = [
-        "Begin writing",
-        "Pick a thought and go",
-        "Start typing",
-        "What's on your mind",
-        "Just start",
-        "Type your first thought",
-        "Start with one sentence",
-        "Just say it"
+        "\n\nBegin writing",
+        "\n\nPick a thought and go",
+        "\n\nStart typing",
+        "\n\nWhat's on your mind",
+        "\n\nJust start",
+        "\n\nType your first thought",
+        "\n\nStart with one sentence",
+        "\n\nJust say it"
     ]
     
     // Add file manager and save timer
@@ -189,14 +189,13 @@ struct ContentView: View {
         print("Looking for entries in: \(documentsDirectory.path)")
         
         do {
-            // Get all .md files
-            let files = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
-            let mdFiles = files.filter { $0.pathExtension == "md" }
+            let fileURLs = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
+            let mdFiles = fileURLs.filter { $0.pathExtension == "md" }
             
             print("Found \(mdFiles.count) .md files")
             
             // Process each file
-            let entriesWithDates = mdFiles.compactMap { fileURL -> (entry: HumanEntry, date: Date)? in
+            let entriesWithDates = mdFiles.compactMap { fileURL -> (entry: HumanEntry, date: Date, content: String)? in
                 let filename = fileURL.lastPathComponent
                 print("Processing: \(filename)")
                 
@@ -237,7 +236,8 @@ struct ContentView: View {
                             filename: filename,
                             previewText: truncated
                         ),
-                        date: fileDate
+                        date: fileDate,
+                        content: content  // Store the full content to check for welcome message
                     )
                 } catch {
                     print("Error reading file: \(error)")
@@ -276,16 +276,19 @@ struct ContentView: View {
                 return false
             }
             
+            // Check if we have only one entry and it's the welcome message
+            let hasOnlyWelcomeEntry = entries.count == 1 && entriesWithDates.first?.content.contains("Welcome to Freewrite.") == true
+            
             if entries.isEmpty {
                 // First time user - create entry with welcome message
                 print("First time user, creating welcome entry")
                 createNewEntry()
-            } else if !hasEmptyEntryToday {
-                // No empty entry for today - create new entry
+            } else if !hasEmptyEntryToday && !hasOnlyWelcomeEntry {
+                // No empty entry for today and not just the welcome entry - create new entry
                 print("No empty entry for today, creating new entry")
                 createNewEntry()
             } else {
-                // Select the most recent empty entry from today
+                // Select the most recent empty entry from today or the welcome entry
                 if let todayEntry = entries.first(where: { entry in
                     // Convert the display date (e.g. "Mar 14") to a Date object
                     let dateFormatter = DateFormatter()
@@ -305,6 +308,10 @@ struct ContentView: View {
                 }) {
                     selectedEntryId = todayEntry.id
                     loadEntry(entry: todayEntry)
+                } else if hasOnlyWelcomeEntry {
+                    // If we only have the welcome entry, select it
+                    selectedEntryId = entries[0].id
+                    loadEntry(entry: entries[0])
                 }
             }
             
@@ -346,13 +353,11 @@ struct ContentView: View {
     }
     
     var placeholderOffset: CGFloat {
-        switch fontSize {
-            case 16...20: return fontSize * 2.47
-            case 18...20: return fontSize * 2.55
-            case 22...24: return fontSize * 2.6
-            case 26...: return fontSize * 2.7
-            default: return fontSize * 2.5
-        }
+        let font = NSFont(name: selectedFont, size: fontSize) ?? .systemFont(ofSize: fontSize)
+        let defaultLineHeight = font.defaultLineHeight()
+        // Account for two newlines plus a small adjustment for visual alignment
+        // return (defaultLineHeight * 2) + 2
+        return fontSize / 2 
     }
     
     var body: some View {
@@ -380,7 +385,7 @@ struct ContentView: View {
                     .font(.custom(selectedFont, size: fontSize))
                     .foregroundColor(Color(red: 0.20, green: 0.20, blue: 0.20))
                     .scrollContentBackground(.hidden)
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.never)
                     .lineSpacing(lineHeight)
                     .frame(maxWidth: 650)
                     .id("\(selectedFont)-\(fontSize)")
@@ -388,7 +393,13 @@ struct ContentView: View {
                     .ignoresSafeArea()
                     .colorScheme(.light)
                     .onAppear {
-                        placeholderText = placeholderOptions.randomElement() ?? "Begin writing"
+                        placeholderText = placeholderOptions.randomElement() ?? "\n\nBegin writing"
+                        DispatchQueue.main.async {
+                            if let scrollView = NSApp.keyWindow?.contentView?.findSubview(ofType: NSScrollView.self) {
+                                scrollView.hasVerticalScroller = false
+                                scrollView.hasHorizontalScroller = false
+                            }
+                        }
                     }
                     .overlay(
                         ZStack(alignment: .topLeading) {
@@ -396,10 +407,10 @@ struct ContentView: View {
                                 Text(placeholderText)
                                     .font(.custom(selectedFont, size: fontSize))
                                     .foregroundColor(.gray.opacity(0.5))
-                                    .padding(.top, 8)
-                                    .padding(.leading, 8)
+                                    // .padding(.top, 8)
+                                    // .padding(.leading, 8)
                                     .allowsHitTesting(false)
-                                    .offset(y: placeholderOffset)
+                                    .offset(x: 5, y: placeholderOffset)
                             }
                         }, alignment: .topLeading
                     )
@@ -839,7 +850,7 @@ struct ContentView: View {
                             }
                         }
                     }
-                    .scrollIndicators(.hidden)  // Hide scroll indicators
+                    .scrollIndicators(.never)
                 }
                 .frame(width: 200)
                 .background(Color(NSColor.controlBackgroundColor))
@@ -959,7 +970,7 @@ struct ContentView: View {
             // Regular new entry starts with newlines
             text = "\n\n"
             // Randomize placeholder text for new entry
-            placeholderText = placeholderOptions.randomElement() ?? "Begin writing"
+            placeholderText = placeholderOptions.randomElement() ?? "\n\nBegin writing"
             // Save the empty entry
             saveEntry(entry: newEntry)
         }
@@ -1033,6 +1044,21 @@ extension NSView {
 extension NSFont {
     func defaultLineHeight() -> CGFloat {
         return self.ascender - self.descender + self.leading
+    }
+}
+
+// Add helper extension at the bottom of the file
+extension NSView {
+    func findSubview<T: NSView>(ofType type: T.Type) -> T? {
+        if let typedSelf = self as? T {
+            return typedSelf
+        }
+        for subview in subviews {
+            if let found = subview.findSubview(ofType: type) {
+                return found
+            }
+        }
+        return nil
     }
 }
 
