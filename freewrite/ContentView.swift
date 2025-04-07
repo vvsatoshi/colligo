@@ -954,14 +954,11 @@ struct ContentView: View {
         
         // If this is the first entry (entries was empty before adding this one)
         if entries.count == 1 {
-            text = """
-            \n\nHello!
-
-            Welcome to Freewrite.
-
-            1. Pick a timer (scroll).
-            2. Full screen.
-            """
+            // Read welcome message from default.md
+            if let defaultMessageURL = Bundle.main.url(forResource: "default", withExtension: "md"),
+               let defaultMessage = try? String(contentsOf: defaultMessageURL, encoding: .utf8) {
+                text = "\n\n" + defaultMessage
+            }
             // Save the welcome message immediately
             saveEntry(entry: newEntry)
             // Update the preview text
