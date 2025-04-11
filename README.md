@@ -1,10 +1,10 @@
 # hi, this is freewrite
 
-a simple, open-source mac app to [freewrite](https://writingprocess.mit.edu/process/step-1-generate-ideas/instructions/freewriting/).
+a simple, open-source mac app to freewrite.
 
-download latest version (here) coming soon!
+download latest version [here](https://www.freewrite.io/)
 
-![img](https://i.imgurb.com/2ucbtff.gif)
+![img](https://i.imgur.com/2ucbtff.gif)
 
 if you wanna make an addition + pr,
 or just wanna remix the app for yourself go for it.
