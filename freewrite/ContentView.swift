@@ -8,6 +8,8 @@
 
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
+import PDFKit
 
 struct HumanEntry: Identifiable {
     let id: UUID
@@ -72,6 +74,7 @@ struct ContentView: View {
     @State private var chatMenuAnchor: CGPoint = .zero
     @State private var showingSidebar = false  // Add this state variable
     @State private var hoveredTrashId: UUID? = nil
+    @State private var hoveredExportId: UUID? = nil
     @State private var placeholderText: String = ""  // Add this line
     @State private var isHoveringNewEntry = false
     @State private var isHoveringClock = false
@@ -346,7 +349,7 @@ struct ContentView: View {
     
     var lineHeight: CGFloat {
         let font = NSFont(name: selectedFont, size: fontSize) ?? .systemFont(ofSize: fontSize)
-        let defaultLineHeight = font.defaultLineHeight()
+        let defaultLineHeight = getLineHeight(font: font)
         return (fontSize * 1.5) - defaultLineHeight
     }
     
@@ -355,11 +358,8 @@ struct ContentView: View {
     }
     
     var placeholderOffset: CGFloat {
-        let font = NSFont(name: selectedFont, size: fontSize) ?? .systemFont(ofSize: fontSize)
-        let defaultLineHeight = font.defaultLineHeight()
-        // Account for two newlines plus a small adjustment for visual alignment
-        // return (defaultLineHeight * 2) + 2
-        return fontSize / 2 
+        // Instead of using calculated line height, use a simple offset
+        return fontSize / 2
     }
     
     var body: some View {
@@ -396,12 +396,7 @@ struct ContentView: View {
                     .colorScheme(.light)
                     .onAppear {
                         placeholderText = placeholderOptions.randomElement() ?? "\n\nBegin writing"
-                        DispatchQueue.main.async {
-                            if let scrollView = NSApp.keyWindow?.contentView?.findSubview(ofType: NSScrollView.self) {
-                                scrollView.hasVerticalScroller = false
-                                scrollView.hasHorizontalScroller = false
-                            }
-                        }
+                        // Removed findSubview code which was causing errors
                     }
                     .overlay(
                         ZStack(alignment: .topLeading) {
@@ -814,25 +809,50 @@ struct ContentView: View {
                                         }
                                         Spacer()
                                         
-                                        // Trash icon that appears on hover
+                                        // Export/Trash icons that appear on hover
                                         if hoveredEntryId == entry.id {
-                                            Button(action: {
-                                                deleteEntry(entry: entry)
-                                            }) {
-                                                Image(systemName: "trash")
-                                                    .font(.system(size: 11))
-                                                    .foregroundColor(hoveredTrashId == entry.id ? .red : .gray)
-                                            }
-                                            .buttonStyle(.plain)
-                                            .onHover { hovering in
-                                                withAnimation(.easeInOut(duration: 0.2)) {
-                                                    hoveredTrashId = hovering ? entry.id : nil
+                                            HStack(spacing: 8) {
+                                                // Export PDF button
+                                                Button(action: {
+                                                    exportEntryAsPDF(entry: entry)
+                                                }) {
+                                                    Image(systemName: "arrow.down.doc")
+                                                        .font(.system(size: 11))
+                                                        .foregroundColor(hoveredExportId == entry.id ? .blue : .gray)
                                                 }
-                                                if hovering {
-                                                    NSCursor.pointingHand.push()
-                                                } else {
-                                                    NSCursor.pop()
+                                                .buttonStyle(.plain)
+                                                .onHover { hovering in
+                                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                                        hoveredExportId = hovering ? entry.id : nil
+                                                    }
+                                                    if hovering {
+                                                        NSCursor.pointingHand.push()
+                                                    } else {
+                                                        NSCursor.pop()
+                                                    }
                                                 }
+                                                .help("Export entry as PDF")
+                                                
+                                                // Trash icon
+                                                Button(action: {
+                                                    deleteEntry(entry: entry)
+                                                }) {
+                                                    Image(systemName: "trash")
+                                                        .font(.system(size: 11))
+                                                        .foregroundColor(hoveredTrashId == entry.id ? .red : .gray)
+                                                }
+                                                .buttonStyle(.plain)
+                                                .onHover { hovering in
+                                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                                        hoveredTrashId = hovering ? entry.id : nil
+                                                    }
+                                                    if hovering {
+                                                        NSCursor.pointingHand.push()
+                                                    } else {
+                                                        NSCursor.pop()
+                                                    }
+                                                }
+                                                .help("Delete entry")
                                             }
                                         }
                                     }
@@ -1032,6 +1052,172 @@ struct ContentView: View {
             print("Error deleting file: \(error)")
         }
     }
+    
+    // Extract a title from entry content for PDF export
+    private func extractTitleFromContent(_ content: String, date: String) -> String {
+        // Clean up content by removing leading/trailing whitespace and newlines
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // If content is empty, just use the date
+        if trimmedContent.isEmpty {
+            return "Entry \(date).pdf"
+        }
+        
+        // Split content into lines and find the first non-empty line
+        let lines = trimmedContent.split(separator: "\n", omittingEmptySubsequences: true)
+        let firstLine = lines.first?.trimmingCharacters(in: .whitespaces) ?? ""
+        
+        // If the first line is empty, use a default title with date
+        if firstLine.isEmpty {
+            return "Entry \(date).pdf"
+        }
+        
+        // Use the first line, truncated if necessary
+        var title = String(firstLine.prefix(30))
+        
+        // Remove characters that are invalid in filenames
+        let invalidChars = CharacterSet(charactersIn: ":/\\?%*|\"<>")
+        title = title.components(separatedBy: invalidChars).joined()
+        
+        // If title is still empty after cleaning, use date
+        if title.isEmpty {
+            return "Entry \(date).pdf"
+        }
+        
+        // Add date to ensure uniqueness
+        return "\(title) - \(date).pdf"
+    }
+    
+    private func exportEntryAsPDF(entry: HumanEntry) {
+        // First make sure the current entry is saved
+        if selectedEntryId == entry.id {
+            saveEntry(entry: entry)
+        }
+        
+        // Get entry content
+        let documentsDirectory = getDocumentsDirectory()
+        let fileURL = documentsDirectory.appendingPathComponent(entry.filename)
+        
+        do {
+            // Read the content of the entry
+            let entryContent = try String(contentsOf: fileURL, encoding: .utf8)
+            
+            // Extract a title from the entry content
+            let suggestedFilename = extractTitleFromContent(entryContent, date: entry.date)
+            
+            // Create save panel
+            let savePanel = NSSavePanel()
+            savePanel.allowedContentTypes = [UTType.pdf]
+            savePanel.nameFieldStringValue = suggestedFilename
+            
+            // Show save dialog
+            if savePanel.runModal() == .OK, let url = savePanel.url {
+                // Create PDF data
+                if let pdfData = createPDFFromText(text: entryContent) {
+                    try pdfData.write(to: url)
+                    print("Successfully exported PDF to: \(url.path)")
+                }
+            }
+        } catch {
+            print("Error in PDF export: \(error)")
+        }
+    }
+    
+    private func createPDFFromText(text: String) -> Data? {
+        // Letter size page dimensions
+        let pageWidth: CGFloat = 612.0  // 8.5 x 72
+        let pageHeight: CGFloat = 792.0 // 11 x 72
+        let margin: CGFloat = 72.0      // 1-inch margins
+        
+        // Calculate content area
+        let contentRect = CGRect(
+            x: margin,
+            y: margin,
+            width: pageWidth - (margin * 2),
+            height: pageHeight - (margin * 2)
+        )
+        
+        // Create PDF data container
+        let pdfData = NSMutableData()
+        
+        // Configure text formatting attributes
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = lineHeight
+        
+        let font = NSFont(name: selectedFont, size: fontSize) ?? .systemFont(ofSize: fontSize)
+        let textAttributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor(red: 0.20, green: 0.20, blue: 0.20, alpha: 1.0),
+            .paragraphStyle: paragraphStyle
+        ]
+        
+        // Create the attributed string with formatting
+        let attributedString = NSAttributedString(string: text, attributes: textAttributes)
+        
+        // Create a Core Text framesetter for text layout
+        let framesetter = CTFramesetterCreateWithAttributedString(attributedString)
+        
+        // Create a PDF context with the data consumer
+        guard let pdfContext = CGContext(consumer: CGDataConsumer(data: pdfData as CFMutableData)!, mediaBox: nil, nil) else {
+            print("Failed to create PDF context")
+            return nil
+        }
+        
+        // Track position within text
+        var currentRange = CFRange(location: 0, length: 0)
+        var pageIndex = 0
+        
+        // Create a path for the text frame
+        let framePath = CGMutablePath()
+        framePath.addRect(contentRect)
+        
+        // Continue creating pages until all text is processed
+        while currentRange.location < attributedString.length {
+            // Begin a new PDF page
+            pdfContext.beginPage(mediaBox: nil)
+            
+            // Fill the page with white background
+            pdfContext.setFillColor(NSColor.white.cgColor)
+            pdfContext.fill(CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight))
+            
+            // Create a frame for this page's text
+            let frame = CTFramesetterCreateFrame(
+                framesetter, 
+                currentRange, 
+                framePath, 
+                nil
+            )
+            
+            // Draw the text frame
+            CTFrameDraw(frame, pdfContext)
+            
+            // Get the range of text that was actually displayed in this frame
+            let visibleRange = CTFrameGetVisibleStringRange(frame)
+            
+            // Move to the next block of text for the next page
+            currentRange.location += visibleRange.length
+            
+            // Finish the page
+            pdfContext.endPage()
+            pageIndex += 1
+            
+            // Safety check - don't allow infinite loops
+            if pageIndex > 1000 {
+                print("Safety limit reached - stopping PDF generation")
+                break
+            }
+        }
+        
+        // Finalize the PDF document
+        pdfContext.closePDF()
+        
+        return pdfData as Data
+    }
+}
+
+// Helper function to calculate line height
+func getLineHeight(font: NSFont) -> CGFloat {
+    return font.ascender - font.descender + font.leading
 }
 
 // Add helper extension to find NSTextView
@@ -1049,14 +1235,7 @@ extension NSView {
     }
 }
 
-// Helper extension to get default line height
-extension NSFont {
-    func defaultLineHeight() -> CGFloat {
-        return self.ascender - self.descender + self.leading
-    }
-}
-
-// Add helper extension at the bottom of the file
+// Add helper extension for finding subviews of a specific type
 extension NSView {
     func findSubview<T: NSView>(ofType type: T.Type) -> T? {
         if let typedSelf = self as? T {
