@@ -909,7 +909,7 @@ struct ContentView: View {
                     .scrollIndicators(.never)
                 }
                 .frame(width: 200)
-                .background(Color(colorScheme == .light ? .white : NSColor.darkGray))
+                .background(Color(colorScheme == .light ? .white : NSColor.black))
             }
         }
         .frame(minWidth: 1100, minHeight: 600)
