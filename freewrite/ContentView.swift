@@ -797,63 +797,66 @@ struct ContentView: View {
                                         loadEntry(entry: entry)
                                     }
                                 }) {
-                                    HStack {
+                                    HStack(alignment: .top) {
                                         VStack(alignment: .leading, spacing: 4) {
-                                            Text(entry.previewText)
-                                                .font(.system(size: 13))
-                                                .lineLimit(1)
-                                                .foregroundColor(.primary)
+                                            HStack {
+                                                Text(entry.previewText)
+                                                    .font(.system(size: 13))
+                                                    .lineLimit(1)
+                                                    .foregroundColor(.primary)
+                                                
+                                                Spacer()
+                                                
+                                                // Export/Trash icons that appear on hover
+                                                if hoveredEntryId == entry.id {
+                                                    HStack(spacing: 8) {
+                                                        // Export PDF button
+                                                        Button(action: {
+                                                            exportEntryAsPDF(entry: entry)
+                                                        }) {
+                                                            Image(systemName: "arrow.down.circle")
+                                                                .font(.system(size: 11))
+                                                                .foregroundColor(hoveredExportId == entry.id ? .black : .gray)
+                                                        }
+                                                        .buttonStyle(.plain)
+                                                        .help("Export entry as PDF")
+                                                        .onHover { hovering in
+                                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                                hoveredExportId = hovering ? entry.id : nil
+                                                            }
+                                                            if hovering {
+                                                                NSCursor.pointingHand.push()
+                                                            } else {
+                                                                NSCursor.pop()
+                                                            }
+                                                        }
+                                                        
+                                                        // Trash icon
+                                                        Button(action: {
+                                                            deleteEntry(entry: entry)
+                                                        }) {
+                                                            Image(systemName: "trash")
+                                                                .font(.system(size: 11))
+                                                                .foregroundColor(hoveredTrashId == entry.id ? .red : .gray)
+                                                        }
+                                                        .buttonStyle(.plain)
+                                                        .onHover { hovering in
+                                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                                hoveredTrashId = hovering ? entry.id : nil
+                                                            }
+                                                            if hovering {
+                                                                NSCursor.pointingHand.push()
+                                                            } else {
+                                                                NSCursor.pop()
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            
                                             Text(entry.date)
                                                 .font(.system(size: 12))
                                                 .foregroundColor(.secondary)
-                                        }
-                                        Spacer()
-                                        
-                                        // Export/Trash icons that appear on hover
-                                        if hoveredEntryId == entry.id {
-                                            HStack(spacing: 8) {
-                                                // Export PDF button
-                                                Button(action: {
-                                                    exportEntryAsPDF(entry: entry)
-                                                }) {
-                                                    Image(systemName: "arrow.down.doc")
-                                                        .font(.system(size: 11))
-                                                        .foregroundColor(hoveredExportId == entry.id ? .blue : .gray)
-                                                }
-                                                .buttonStyle(.plain)
-                                                .onHover { hovering in
-                                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                                        hoveredExportId = hovering ? entry.id : nil
-                                                    }
-                                                    if hovering {
-                                                        NSCursor.pointingHand.push()
-                                                    } else {
-                                                        NSCursor.pop()
-                                                    }
-                                                }
-                                                .help("Export entry as PDF")
-                                                
-                                                // Trash icon
-                                                Button(action: {
-                                                    deleteEntry(entry: entry)
-                                                }) {
-                                                    Image(systemName: "trash")
-                                                        .font(.system(size: 11))
-                                                        .foregroundColor(hoveredTrashId == entry.id ? .red : .gray)
-                                                }
-                                                .buttonStyle(.plain)
-                                                .onHover { hovering in
-                                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                                        hoveredTrashId = hovering ? entry.id : nil
-                                                    }
-                                                    if hovering {
-                                                        NSCursor.pointingHand.push()
-                                                    } else {
-                                                        NSCursor.pop()
-                                                    }
-                                                }
-                                                .help("Delete entry")
-                                            }
                                         }
                                     }
                                     .frame(maxWidth: .infinity)
@@ -1060,32 +1063,32 @@ struct ContentView: View {
         
         // If content is empty, just use the date
         if trimmedContent.isEmpty {
-            return "Entry \(date).pdf"
+            return "Entry \(date)"
         }
         
-        // Split content into lines and find the first non-empty line
-        let lines = trimmedContent.split(separator: "\n", omittingEmptySubsequences: true)
-        let firstLine = lines.first?.trimmingCharacters(in: .whitespaces) ?? ""
+        // Split content into words, ignoring newlines and removing punctuation
+        let words = trimmedContent
+            .replacingOccurrences(of: "\n", with: " ")
+            .components(separatedBy: .whitespaces)
+            .filter { !$0.isEmpty }
+            .map { word in
+                word.trimmingCharacters(in: CharacterSet(charactersIn: ".,!?;:\"'()[]{}<>"))
+                    .lowercased()
+            }
+            .filter { !$0.isEmpty }
         
-        // If the first line is empty, use a default title with date
-        if firstLine.isEmpty {
-            return "Entry \(date).pdf"
+        // If we have at least 4 words, use them
+        if words.count >= 4 {
+            return "\(words[0])-\(words[1])-\(words[2])-\(words[3])"
         }
         
-        // Use the first line, truncated if necessary
-        var title = String(firstLine.prefix(30))
-        
-        // Remove characters that are invalid in filenames
-        let invalidChars = CharacterSet(charactersIn: ":/\\?%*|\"<>")
-        title = title.components(separatedBy: invalidChars).joined()
-        
-        // If title is still empty after cleaning, use date
-        if title.isEmpty {
-            return "Entry \(date).pdf"
+        // If we have fewer than 4 words, use what we have
+        if !words.isEmpty {
+            return words.joined(separator: "-")
         }
         
-        // Add date to ensure uniqueness
-        return "\(title) - \(date).pdf"
+        // Fallback to date if no words found
+        return "Entry \(date)"
     }
     
     private func exportEntryAsPDF(entry: HumanEntry) {
@@ -1102,13 +1105,14 @@ struct ContentView: View {
             // Read the content of the entry
             let entryContent = try String(contentsOf: fileURL, encoding: .utf8)
             
-            // Extract a title from the entry content
-            let suggestedFilename = extractTitleFromContent(entryContent, date: entry.date)
+            // Extract a title from the entry content and add .pdf extension
+            let suggestedFilename = extractTitleFromContent(entryContent, date: entry.date) + ".pdf"
             
             // Create save panel
             let savePanel = NSSavePanel()
             savePanel.allowedContentTypes = [UTType.pdf]
             savePanel.nameFieldStringValue = suggestedFilename
+            savePanel.isExtensionHidden = false  // Make sure extension is visible
             
             // Show save dialog
             if savePanel.runModal() == .OK, let url = savePanel.url {
@@ -1151,8 +1155,11 @@ struct ContentView: View {
             .paragraphStyle: paragraphStyle
         ]
         
+        // Trim the initial newlines before creating the PDF
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        
         // Create the attributed string with formatting
-        let attributedString = NSAttributedString(string: text, attributes: textAttributes)
+        let attributedString = NSAttributedString(string: trimmedText, attributes: textAttributes)
         
         // Create a Core Text framesetter for text layout
         let framesetter = CTFramesetterCreateWithAttributedString(attributedString)
@@ -1253,4 +1260,3 @@ extension NSView {
 #Preview {
     ContentView()
 }
-
