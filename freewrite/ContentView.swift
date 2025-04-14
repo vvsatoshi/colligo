@@ -348,7 +348,7 @@ struct ContentView: View {
     
     var timerColor: Color {
         if timerIsRunning {
-            return isHoveringTimer ? (colorScheme == .light ? .black : .white) : .red
+            return isHoveringTimer ? (colorScheme == .light ? .black : .white) : .gray.opacity(0.8)
         } else {
             return isHoveringTimer ? (colorScheme == .light ? .black : .white) : (colorScheme == .light ? .gray : .gray.opacity(0.8))
         }
@@ -727,29 +727,6 @@ struct ContentView: View {
                             Text("•")
                                 .foregroundColor(.gray)
                             
-                            // Version history button
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    showingSidebar.toggle()
-                                }
-                            }) {
-                                Image(systemName: "clock.arrow.circlepath")
-                                    .foregroundColor(isHoveringClock ? textHoverColor : textColor)
-                            }
-                            .buttonStyle(.plain)
-                            .onHover { hovering in
-                                isHoveringClock = hovering
-                                isHoveringBottomNav = hovering
-                                if hovering {
-                                    NSCursor.pointingHand.push()
-                                } else {
-                                    NSCursor.pop()
-                                }
-                            }
-                            
-                            Text("•")
-                                .foregroundColor(.gray)
-                            
                             // Theme toggle button
                             Button(action: {
                                 colorScheme = colorScheme == .light ? .dark : .light
@@ -762,6 +739,29 @@ struct ContentView: View {
                             .buttonStyle(.plain)
                             .onHover { hovering in
                                 isHoveringThemeToggle = hovering
+                                isHoveringBottomNav = hovering
+                                if hovering {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
+
+                            Text("•")
+                                .foregroundColor(.gray)
+                            
+                            // Version history button
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showingSidebar.toggle()
+                                }
+                            }) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .foregroundColor(isHoveringClock ? textHoverColor : textColor)
+                            }
+                            .buttonStyle(.plain)
+                            .onHover { hovering in
+                                isHoveringClock = hovering
                                 isHoveringBottomNav = hovering
                                 if hovering {
                                     NSCursor.pointingHand.push()
