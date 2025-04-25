@@ -611,6 +611,8 @@ struct ContentView: View {
                             
                             Button("Chat") {
                                 showingChatMenu = true
+                                // Ensure didCopyPrompt is reset when opening the menu
+                                didCopyPrompt = false
                             }
                             .buttonStyle(.plain)
                             .foregroundColor(isHoveringChat ? textHoverColor : textColor)
