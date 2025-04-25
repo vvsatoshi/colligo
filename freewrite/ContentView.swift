@@ -442,7 +442,7 @@ struct ContentView: View {
                                 } action: { height in
                                     viewHeight = height
                                 }
-                                .contentMargins(.bottom, viewHeight / 2)
+                                .contentMargins(.bottom, viewHeight / 4)
                     
                 
                 VStack {
