@@ -85,6 +85,8 @@ struct ContentView: View {
     @State private var colorScheme: ColorScheme = .light // Add state for color scheme
     @State private var isHoveringThemeToggle = false // Add state for theme toggle hover
     @State private var didCopyPrompt: Bool = false // Add state for copy prompt feedback
+    @State private var showingChatSidebar = false
+    @State private var chatSidebarWidth: CGFloat = 300
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let entryHeight: CGFloat = 40
     
@@ -124,6 +126,7 @@ struct ContentView: View {
     }()
     
     // Add shared prompt constant
+    // TODO: delete claude prompt and improve the aiChatPrompt for the ChatView.swift.
     private let aiChatPrompt = """
     below is my journal entry. wyt? talk through it with me like a friend. don't therpaize me and give me a whole breakdown, don't repeat my thoughts with headings. really take all of this, and tell me back stuff truly as if you're an old homie.
     
@@ -138,17 +141,7 @@ struct ContentView: View {
     my entry:
     """
     
-    private let claudePrompt = """
-    Take a look at my journal entry below. I'd like you to analyze it and respond with deep insight that feels personal, not clinical.
-    Imagine you're not just a friend, but a mentor who truly gets both my tech background and my psychological patterns. I want you to uncover the deeper meaning and emotional undercurrents behind my scattered thoughts.
-    Keep it casual, dont say yo, help me make new connections i don't see, comfort, validate, challenge, all of it. dont be afraid to say a lot. format with markdown headings if needed.
-    Use vivid metaphors and powerful imagery to help me see what I'm really building. Organize your thoughts with meaningful headings that create a narrative journey through my ideas.
-    Don't just validate my thoughts - reframe them in a way that shows me what I'm really seeking beneath the surface. Go beyond the product concepts to the emotional core of what I'm trying to solve.
-    Be willing to be profound and philosophical without sounding like you're giving therapy. I want someone who can see the patterns I can't see myself and articulate them in a way that feels like an epiphany.
-    Start with 'hey, thanks for showing me this. my thoughts:' and then use markdown headings to structure your response.
-
-    Here's my journal entry:
-    """
+    private let claudePrompt = "gibberish"
     
     // Initialize with saved theme preference if available
     init() {
@@ -414,7 +407,7 @@ struct ContentView: View {
                     .scrollContentBackground(.hidden)
                     .scrollIndicators(.never)
                     .lineSpacing(lineHeight)
-                    .frame(maxWidth: 650)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
           
                     .id("\(selectedFont)-\(fontSize)-\(colorScheme)")
@@ -622,9 +615,9 @@ struct ContentView: View {
                                 .foregroundColor(.gray)
                             
                             Button("Chat") {
-                                showingChatMenu = true
-                                // Ensure didCopyPrompt is reset when opening the menu
-                                didCopyPrompt = false
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showingChatSidebar.toggle()
+                                }
                             }
                             .buttonStyle(.plain)
                             .foregroundColor(isHoveringChat ? textHoverColor : textColor)
@@ -635,142 +628,6 @@ struct ContentView: View {
                                     NSCursor.pointingHand.push()
                                 } else {
                                     NSCursor.pop()
-                                }
-                            }
-                            .popover(isPresented: $showingChatMenu, attachmentAnchor: .point(UnitPoint(x: 0.5, y: 0)), arrowEdge: .top) {
-                                VStack(spacing: 0) { // Wrap everything in a VStack for consistent styling and onChange
-                                    let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    
-                                    // Calculate potential URL lengths
-                                    let gptFullText = aiChatPrompt + "\n\n" + trimmedText
-                                    let claudeFullText = claudePrompt + "\n\n" + trimmedText
-                                    let encodedGptText = gptFullText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                                    let encodedClaudeText = claudeFullText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                                    
-                                    let gptUrlLength = "https://chat.openai.com/?m=".count + encodedGptText.count
-                                    let claudeUrlLength = "https://claude.ai/new?q=".count + encodedClaudeText.count
-                                    let isUrlTooLong = gptUrlLength > 6000 || claudeUrlLength > 6000
-                                    
-                                    if isUrlTooLong {
-                                        // View for long text (URL too long)
-                                        Text("Hey, your entry is long. It'll break the URL. Instead, copy prompt by clicking below and paste into AI of your choice!")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(popoverTextColor)
-                                            .lineLimit(nil)
-                                            .multilineTextAlignment(.leading)
-                                            .frame(width: 200, alignment: .leading)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                        
-                                        Divider()
-                                        
-                                        Button(action: {
-                                            copyPromptToClipboard()
-                                            didCopyPrompt = true
-                                        }) {
-                                            Text(didCopyPrompt ? "Copied!" : "Copy Prompt")
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 8)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .foregroundColor(popoverTextColor)
-                                        .onHover { hovering in
-                                            if hovering {
-                                                NSCursor.pointingHand.push()
-                                            } else {
-                                                NSCursor.pop()
-                                            }
-                                        }
-                                        
-                                    } else if text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("hi. my name is farza.") {
-                                        Text("Yo. Sorry, you can't chat with the guide lol. Please write your own entry.")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(popoverTextColor)
-                                            .frame(width: 250)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                    } else if text.count < 350 {
-                                        Text("Please free write for at minimum 5 minutes first. Then click this. Trust.")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(popoverTextColor)
-                                            .frame(width: 250)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                    } else {
-                                        // View for normal text length
-                                        Button(action: {
-                                            showingChatMenu = false
-                                            openChatGPT()
-                                        }) {
-                                            Text("ChatGPT")
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 8)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .foregroundColor(popoverTextColor)
-                                        .onHover { hovering in
-                                            if hovering {
-                                                NSCursor.pointingHand.push()
-                                            } else {
-                                                NSCursor.pop()
-                                            }
-                                        }
-                                        
-                                        Divider()
-                                        
-                                        Button(action: {
-                                            showingChatMenu = false
-                                            openClaude()
-                                        }) {
-                                            Text("Claude")
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 8)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .foregroundColor(popoverTextColor)
-                                        .onHover { hovering in
-                                            if hovering {
-                                                NSCursor.pointingHand.push()
-                                            } else {
-                                                NSCursor.pop()
-                                            }
-                                        }
-                                        
-                                        Divider()
-                                        
-                                        Button(action: {
-                                            // Don't dismiss menu, just copy and update state
-                                            copyPromptToClipboard()
-                                            didCopyPrompt = true
-                                        }) {
-                                            Text(didCopyPrompt ? "Copied!" : "Copy Prompt")
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 8)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .foregroundColor(popoverTextColor)
-                                        .onHover { hovering in
-                                            if hovering {
-                                                NSCursor.pointingHand.push()
-                                            } else {
-                                                NSCursor.pop()
-                                            }
-                                        }
-                                    }
-                                }
-                                .frame(minWidth: 120, maxWidth: 250) // Allow width to adjust
-                                .background(popoverBackgroundColor)
-                                .cornerRadius(8)
-                                .shadow(color: Color.black.opacity(0.1), radius: 4, y: 2)
-                                // Reset copied state when popover dismisses
-                                .onChange(of: showingChatMenu) { newValue in
-                                    if !newValue {
-                                        didCopyPrompt = false
-                                    }
                                 }
                             }
                             
@@ -884,7 +741,22 @@ struct ContentView: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             
+            if showingChatSidebar {
+                Divider()
+                
+                ChatView(showingChatSidebar: $showingChatSidebar, selectedFont: $selectedFont)
+                    .frame(width: chatSidebarWidth)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let newWidth = chatSidebarWidth - value.translation.width
+                                chatSidebarWidth = max(200, min(newWidth, 500))
+                            }
+                    )
+            }
+
             // Right sidebar
             if showingSidebar {
                 Divider()
@@ -1377,36 +1249,6 @@ struct ContentView: View {
 // Helper function to calculate line height
 func getLineHeight(font: NSFont) -> CGFloat {
     return font.ascender - font.descender + font.leading
-}
-
-// Add helper extension to find NSTextView
-extension NSView {
-    func findTextView() -> NSView? {
-        if self is NSTextView {
-            return self
-        }
-        for subview in subviews {
-            if let textView = subview.findTextView() {
-                return textView
-            }
-        }
-        return nil
-    }
-}
-
-// Add helper extension for finding subviews of a specific type
-extension NSView {
-    func findSubview<T: NSView>(ofType type: T.Type) -> T? {
-        if let typedSelf = self as? T {
-            return typedSelf
-        }
-        for subview in subviews {
-            if let found = subview.findSubview(ofType: type) {
-                return found
-            }
-        }
-        return nil
-    }
 }
 
 #Preview {
