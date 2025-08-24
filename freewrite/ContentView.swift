@@ -388,6 +388,13 @@ struct ContentView: View {
             ZStack {
                 Color(colorScheme == .light ? .white : .black)
                     .ignoresSafeArea()
+                    .background(
+                        Button("") {
+                            showingChatSidebar.toggle()
+                        }
+                        .keyboardShortcut("j", modifiers: .command)
+                        .hidden()
+                    )
                 
               
                     TextEditor(text: Binding(
@@ -407,7 +414,7 @@ struct ContentView: View {
                     .scrollContentBackground(.hidden)
                     .scrollIndicators(.never)
                     .lineSpacing(lineHeight)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: 650)
                     
           
                     .id("\(selectedFont)-\(fontSize)-\(colorScheme)")

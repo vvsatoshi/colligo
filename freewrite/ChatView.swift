@@ -45,15 +45,23 @@ struct ChatView: View {
             }
 
             HStack(alignment: .center) {
-                CustomTextEditor(text: $messageText, font: .constant(NSFont(name: selectedFont, size: 16)!))
-                    .focused($isTextFieldFocused)
-                    .frame(minHeight: 50, maxHeight: 100)
-                    .cornerRadius(5)
-                    .padding(5)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 5)
-                            .stroke(Color.gray, lineWidth: 0)
-                    )
+                ZStack(alignment: .topLeading) {
+                    CustomTextEditor(text: $messageText, font: .constant(NSFont(name: selectedFont, size: 16)!))
+                        .focused($isTextFieldFocused)
+                        .frame(minHeight: 50, maxHeight: 100)
+                        .cornerRadius(5)
+                        .padding(5)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(Color.gray, lineWidth: 0)
+                        )
+                    if messageText.isEmpty {
+                        Text("Ask anything")
+                            .foregroundColor(.gray)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 12)
+                    }
+                }
                 
                 Button(action: {
                     // TODO: Add send message functionality
