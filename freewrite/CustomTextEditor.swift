@@ -16,12 +16,14 @@ struct CustomTextEditor: NSViewRepresentable {
         let scrollView = NSTextView.scrollableTextView()
         scrollView.hasVerticalScroller = false
         let textView = scrollView.documentView as! NSTextView
+        textView.drawsBackground = false
         textView.delegate = context.coordinator
         textView.font = font
         textView.textColor = NSColor.textColor
         textView.insertionPointColor = NSColor.systemBlue
         textView.isRichText = false
         textView.string = text
+        textView.textContainer?.lineFragmentPadding = 1  // Minimal padding preserves cursor
         return scrollView
     }
 

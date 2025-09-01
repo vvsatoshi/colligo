@@ -1,4 +1,3 @@
-
 //
 //  ChatView.swift
 //  freewrite
@@ -42,24 +41,29 @@ struct ChatView: View {
                 VStack(alignment: .leading) {
                     // TODO: Add chat messages here
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(colorScheme == .light ? .gray.opacity(0.05) : .gray.opacity(0.1)))
             }
 
             HStack(alignment: .center) {
                 ZStack(alignment: .topLeading) {
                     CustomTextEditor(text: $messageText, font: .constant(NSFont(name: selectedFont, size: 16)!))
                         .focused($isTextFieldFocused)
-                        .frame(minHeight: 50, maxHeight: 100)
-                        .cornerRadius(5)
-                        .padding(5)
+                        .frame(minHeight: 40, maxHeight: 115)
+                        .cornerRadius(0)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 5)
+                            RoundedRectangle(cornerRadius: 0)
                                 .stroke(Color.gray, lineWidth: 0)
                         )
+                    
                     if messageText.isEmpty {
                         Text("Ask anything")
                             .foregroundColor(.gray)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 12)
+                            .font(.custom(selectedFont, size: 16))
+                            .padding(.leading, 1)  // Matches the 1pt lineFragmentPadding
+                            // .padding(.top, 1)
+                            .padding(.trailing, 5)
+                            .padding(.bottom, 4)
                     }
                 }
                 
@@ -75,7 +79,12 @@ struct ChatView: View {
                     isHoveringSendButton = hovering
                 }
             }
-            .padding()
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color(colorScheme == .light ? .gray.opacity(0.05) : .gray.opacity(0.3)))
+            .cornerRadius(10)
+            .padding(10)
+
         }
         .background(colorScheme == .light ? Color.white : Color(NSColor.black))
         .onAppear {
